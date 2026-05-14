@@ -1,6 +1,31 @@
 import sys
+import requests
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, round, lit
+from pyspark.sql.functions import col, when, round, lit, udf
+from pyspark.sql.types import StringType
+from deep_translator import GoogleTranslator
+
+# --- Exchange rate Real-time Function ---
+def get_live_exchange_rate():
+    try:
+        #USE Frankfurter API (Free and not use API Key)
+        url = "https://api.frankfurter.app/latest?from=IDR&to=THB"
+        response = requests.get(url)
+        data = response.json()
+        return data['rates']['THB']
+    except Exception as e:
+        return 0.0022
+
+def translate_text(text):
+    if text is None or text == "":
+        return text
+    try:
+        # Translate (id) --> (en)
+        return GoogleTranslator(source='id', target='en').translate(text)
+    except:
+        return text
+
+translate_udf = udf(translate_text, StringType())
 
 def process_silver_stage(target_date):
     spark = SparkSession.builder \
@@ -14,33 +39,44 @@ def process_silver_stage(target_date):
     # 1. Extract
     daily_df = spark.table("local.db.bronze_sales").filter(col("Tanggal") == target_date)
 
+    if daily_df.count() == 0:
+        print(f"No data for date {target_date}")
+        return
+
     # 2. Transform
-    exchange_rate = 0.0022
+    # Pull Real-time
+    live_rate = get_live_exchange_rate()
+    print(f"Current Exchange Rate (IDR to THB): {live_rate}")
     
+    unique_categories = daily_df.select("Kategori").distinct()
+    translated_cat = unique_categories.withColumn("Category_EN", translate_udf(col("Kategori")))
+    
+    unique_methods = daily_df.select("Metode_Bayar").distinct()
+    translated_methods = unique_methods.withColumn("Payment_EN", translate_udf(col("Metode_Bayar")))
+
+    #Join into main table
     silver_df = daily_df \
+        .join(translated_cat, "Kategori", "left") \
+        .join(translated_methods, "Metode_Bayar", "left") \
         .withColumnRenamed("Tanggal", "Date") \
         .withColumnRenamed("Tahun", "Year") \
         .withColumnRenamed("Bulan", "Month") \
         .withColumnRenamed("Hari", "Day") \
-        .withColumnRenamed("Kategori", "Category") \
         .withColumnRenamed("Nama_Produk", "Product_Name") \
         .withColumnRenamed("Lokasi_Toko", "Store_Location") \
-        .withColumnRenamed("Metode_Bayar", "Payment_Method") \
         .withColumnRenamed("Qty", "Quantity") \
-        .withColumn("Category", when(col("Category") == "Kamera", "Camera")
-                               .when(col("Category") == "Aksesoris", "Accessories")
-                               .otherwise(col("Category"))) \
-        .withColumn("Payment_Method", when(col("Payment_Method") == "Kartu Kredit", "Credit Card")
-                                     .when(col("Payment_Method") == "Tunai", "Cash")
-                                     .otherwise(col("Payment_Method"))) \
-        .withColumn("Unit_Price_THB", round(col("Harga_Satuan") * exchange_rate, 2)) \
-        .withColumn("Discount_THB", round(col("Diskon_IDR") * exchange_rate, 2)) \
-        .withColumn("Total_Sales_THB", round(col("Total_Penjualan") * exchange_rate, 2)) \
-        .drop("Harga_Satuan", "Diskon_IDR", "Total_Penjualan")
+        .withColumn("Category", col("Category_EN")) \
+        .withColumn("Payment_Method", col("Payment_EN")) \
+        .withColumn("Unit_Price_THB", round(col("Harga_Satuan") * live_rate, 2)) \
+        .withColumn("Discount_THB", round(col("Diskon_IDR") * live_rate, 2)) \
+        .withColumn("Total_Sales_THB", round(col("Total_Penjualan") * live_rate, 2)) \
+        .select("Date", "Year", "Month", "Day", "Category", "Product_Name", 
+                "Store_Location", "Payment_Method", "Quantity", 
+                "Unit_Price_THB", "Discount_THB", "Total_Sales_THB", 
+                "ingestion_timestamp", "source_file")
 
     # 3. Load
     table_name = "local.db.silver_sales"
-    
     if spark.catalog.tableExists(table_name):
         silver_df.writeTo(table_name).append()
     else:
@@ -48,11 +84,8 @@ def process_silver_stage(target_date):
             .tableProperty("format-version", "2") \
             .partitionedBy("Date") \
             .create()
-
-    print(f"Silver stage processing completed for date: {target_date}")
     spark.stop()
 
 if __name__ == "__main__":
-   
     target_date = sys.argv[1] if len(sys.argv) > 1 else "2022-05-01"
     process_silver_stage(target_date)
