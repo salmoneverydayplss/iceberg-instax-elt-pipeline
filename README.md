@@ -28,7 +28,7 @@ The dataset utilized in this project is the **Fujifilm Instax Sales Transaction 
 ## 2. System Architecture
 The project follows the **Medallion Architecture** (Bronze, Silver, Gold) using an **ELT (Extract, Load, Transform)** pattern to ensure a reliable Source of Truth in the Bronze layer.
 
-## Data Pipeline Architecture
+### Data Pipeline Architecture
 
 ```mermaid
 graph LR
@@ -56,6 +56,9 @@ graph LR
     style Silver fill:#c0c0c0,color:#000,stroke:#333
     style Gold fill:#ffd700,color:#000,stroke:#333
 ```
+### Airflow DAG
+
+<img width="1898" height="864" alt="image" src="https://github.com/user-attachments/assets/b5f37421-2d05-46db-b810-022758bde36f" />
 
 ---
 
