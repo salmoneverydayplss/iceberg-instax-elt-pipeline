@@ -145,6 +145,17 @@ The system is designed for flexible, ad-hoc processing via the Airflow UI:
 
 ---
 ## 7. Data Quality & Results
+**Example of Date=2022-05-04**
+
+ 1.) Sliver _sales
+
+<img width="1703" height="221" alt="image" src="https://github.com/user-attachments/assets/0ca077fc-625a-45e6-bbbc-ace3471fbfba" />
+
+ 2.)Gold_dialy_sumary
+
+<img width="526" height="69" alt="image" src="https://github.com/user-attachments/assets/d9fb2b17-5a76-44a7-bbf4-dd8851e0ac9a" />
+
+
 
 ---
 ## Airflow Operators & Technical Decisions
