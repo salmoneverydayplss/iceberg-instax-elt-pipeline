@@ -15,7 +15,7 @@ This project implements an automated **End-to-End Data Lakehouse Pipeline** desi
 
 ---
 
-## Dataset
+## 2. Dataset
 The dataset utilized in this project is the **Fujifilm Instax Sales Transaction Data (Synthetic)**, sourced from Kaggle.
 
 * **Source:** [Kaggle - Fujifilm Instax Sales Transaction Data](https://www.kaggle.com/datasets/bertnardomariouskono/fujifilm-instax-sales-transaction-data-synthetic)
@@ -25,10 +25,31 @@ The dataset utilized in this project is the **Fujifilm Instax Sales Transaction 
 
 ---
 
-## 2. System Architecture
+## 3. Tech Stack & Compatibility
+
+To ensure reproducibility, this project was developed and tested using the following versions:
+
+| Tool | Version | Description |
+| :--- | :--- | :--- |
+| **Apache Airflow** | `2.10.0` | For task orchestration and scheduling. |
+| **PySpark** | `3.5.0` | For distributed data processing. |
+| **Apache Iceberg** | `1.5.0` | Spark-runtime-3.5_2.12. |
+| **Python** | `3.12` | Main programming language. |
+| **Java (JRE/JDK)** | `17` | Required for running Apache Spark. |
+| **Docker** | `26.x+` | Container engine. |
+
+### Libraries & External Services
+- **deep-translator (v1.11.x):** Used for translating categorical metadata (Indonesian to English).
+- **requests (v2.32.x):** Handles HTTP requests to the Frankfurter API.
+- **Frankfurter API (v1):** Provides daily-updated currency exchange rates (IDR ↔ THB).
+- **PySpark Testing Logic:** Custom DQ Firewall implemented using PySpark's built-in functions to ensure data integrity.
+
+---
+
+## 4. System Architecture
 The project follows the **Medallion Architecture** (Bronze, Silver, Gold) using an **ELT (Extract, Load, Transform)** pattern to ensure a reliable Source of Truth in the Bronze layer.
 
-### Data Pipeline Architecture
+## Data Pipeline Architecture
 
 ```mermaid
 graph LR
@@ -56,13 +77,10 @@ graph LR
     style Silver fill:#c0c0c0,color:#000,stroke:#333
     style Gold fill:#ffd700,color:#000,stroke:#333
 ```
-### Airflow DAG
-
-<img width="1898" height="864" alt="image" src="https://github.com/user-attachments/assets/b5f37421-2d05-46db-b810-022758bde36f" />
 
 ---
 
-## 3. Project Structure & Environment
+## 5. Project Structure & Environment
 The directory is structured to ensure seamless deployment within a Dockerized environment:
 ```bash
 instax-elt-pipeline/
@@ -91,7 +109,7 @@ instax-elt-pipeline/
 └── requirements.txt                     # Python dependencies
 ```
 ---
-## 4. Key Features
+## 6. Key Features
 **Dynamic ELT Workflow**
 -  **Load First:** Raw data is immediately persisted in the Bronze layer without modification, enabling full re-runability and auditing.
 
@@ -110,7 +128,7 @@ instax-elt-pipeline/
 -  **Logic Check:** Validates that revenue and quantities are non-negative.
 
 ---
-## 5. Installation & Setup
+## 7. Installation & Setup
 **Prerequisites**
 - Docker and Docker Compose installed.
 
@@ -135,7 +153,7 @@ docker-compose up --build -d
   Access the UI at localhost:8080 (Username/Password: airflow) and create a Connection named `fs_default` with the type File (path).
 
   ---
-## 6.How to Use
+## 8.How to Use
 The system is designed for flexible, ad-hoc processing via the Airflow UI:
 
 1. Navigate to the instax_end_to_end_elt DAG.
@@ -147,16 +165,26 @@ The system is designed for flexible, ad-hoc processing via the Airflow UI:
 4. Monitor the execution through the 3 stages and verify results in the logs.
 
 ---
-## 7. Data Quality & Results
+## 9. Data Quality & Results (Processing Logic)
+
 **Example of Date=2022-05-04**
 
- 1.) Sliver _sales
+ ### 1.) Bronze_sales
+ - **Action:** Ingests the raw CSV file into Apache Iceberg format.
+ - **State:** Data remains in its original form (Indonesian language, IDR currency) to preserve the source of truth.
+ - **Result:**  <img width="1640" height="224" alt="image" src="https://github.com/user-attachments/assets/b62f9c03-ff5e-4af3-b56d-6b59da0d175c" />
 
-<img width="1703" height="221" alt="image" src="https://github.com/user-attachments/assets/0ca077fc-625a-45e6-bbbc-ace3471fbfba" />
+ ### 2.) Silver_sales
+ - **Action:** Cleans data and performs schema transformation.
+ - **Key Logic:**
+    - **Translation:** `Kategori` and `Metode_Bayar` are translated to English (e.g., 'Kamera' → 'Camera').
+    - **Currency Conversion:** Fetches the IDR/THB rate via API and calculates a new `Total_Sales_THB` column.
+ - **Result:** <img width="1703" height="221" alt="image" src="https://github.com/user-attachments/assets/0ca077fc-625a-45e6-bbbc-ace3471fbfba" />
 
- 2.)Gold_dialy_sumary
-
-<img width="526" height="69" alt="image" src="https://github.com/user-attachments/assets/d9fb2b17-5a76-44a7-bbf4-dd8851e0ac9a" />
+ ### 3.)Gold_daily_summary
+ - **Action:** Daily summary of sales performance.
+ - **Outcome:** Aggregates individual transactions into 3 key metrics: `Total_Revenue_THB`, `Total_Items_Sold`, and `Total_Transactions`. This table is optimized for Executive Dashboards.
+ - **Result:**   <img width="526" height="69" alt="image" src="https://github.com/user-attachments/assets/d9fb2b17-5a76-44a7-bbf4-dd8851e0ac9a" />
 
 
 
