@@ -77,6 +77,9 @@ graph LR
     style Silver fill:#c0c0c0,color:#000,stroke:#333
     style Gold fill:#ffd700,color:#000,stroke:#333
 ```
+### DAG Airflow
+
+<img width="1898" height="864" alt="Screenshot 2026-05-15 235405" src="https://github.com/user-attachments/assets/24abc544-6359-4748-95d2-340c1c7b59ea" />
 
 ---
 
@@ -172,19 +175,23 @@ The system is designed for flexible, ad-hoc processing via the Airflow UI:
  ### 1.) Bronze_sales
  - **Action:** Ingests the raw CSV file into Apache Iceberg format.
  - **State:** Data remains in its original form (Indonesian language, IDR currency) to preserve the source of truth.
- - **Result:**  <img width="1640" height="224" alt="image" src="https://github.com/user-attachments/assets/b62f9c03-ff5e-4af3-b56d-6b59da0d175c" />
+ - **Result:**
+   <img width="1640" height="224" alt="image" src="https://github.com/user-attachments/assets/b62f9c03-ff5e-4af3-b56d-6b59da0d175c" />
 
  ### 2.) Silver_sales
  - **Action:** Cleans data and performs schema transformation.
  - **Key Logic:**
     - **Translation:** `Kategori` and `Metode_Bayar` are translated to English (e.g., 'Kamera' → 'Camera').
     - **Currency Conversion:** Fetches the IDR/THB rate via API and calculates a new `Total_Sales_THB` column.
- - **Result:** <img width="1703" height="221" alt="image" src="https://github.com/user-attachments/assets/0ca077fc-625a-45e6-bbbc-ace3471fbfba" />
+ - **Result:**
+   <img width="1703" height="221" alt="image" src="https://github.com/user-attachments/assets/0ca077fc-625a-45e6-bbbc-ace3471fbfba" />
 
  ### 3.)Gold_daily_summary
  - **Action:** Daily summary of sales performance.
  - **Outcome:** Aggregates individual transactions into 3 key metrics: `Total_Revenue_THB`, `Total_Items_Sold`, and `Total_Transactions`. This table is optimized for Executive Dashboards.
- - **Result:**   <img width="526" height="69" alt="image" src="https://github.com/user-attachments/assets/d9fb2b17-5a76-44a7-bbf4-dd8851e0ac9a" />
+ - **Result:**
+   
+    <img width="526" height="69" alt="image" src="https://github.com/user-attachments/assets/d9fb2b17-5a76-44a7-bbf4-dd8851e0ac9a" />
 
 
 
